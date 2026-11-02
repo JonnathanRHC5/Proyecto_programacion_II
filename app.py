@@ -7,70 +7,70 @@ import pandas as pd
 from shiny import App, render, ui
 
 #Archivo 
-DATA = pd.read_csv(Path(__file__).with_name("Failures_10_26_2026.csv"))
+BASE_DATOS = pd.read_csv(Path(__file__).with_name("Failures_10_26_2026.csv"))
 
 ##############################################################################################
 #Funciones para la pregunta 1 
-RESOLUTIONS = DATA["RESTYPE1"].value_counts().head(3).index.tolist()
-ASSET_Q1, ASSET_Q2 = DATA["QBFASSET"].quantile([1 / 3, 2 / 3])
-DATA["Tamaño de activos"] = np.select(
-    [DATA["QBFASSET"] <= ASSET_Q1, DATA["QBFASSET"] <= ASSET_Q2],
+RESOLUCIONES = BASE_DATOS["RESTYPE1"].value_counts().head(3).index.tolist()
+ACTIVOS_P33, ACTIVOS_P67 = BASE_DATOS["QBFASSET"].quantile([1 / 3, 2 / 3])
+BASE_DATOS["Tamaño de activos"] = np.select(
+    [BASE_DATOS["QBFASSET"] <= ACTIVOS_P33, BASE_DATOS["QBFASSET"] <= ACTIVOS_P67],
     ["Bajo", "Medio"],
     default="Alto",
 )
 
 
-def points(resolution):
-    rows = DATA.loc[DATA["RESTYPE1"] == resolution, ["QBFASSET", "COST"]].dropna()
-    for column in ("QBFASSET", "COST"):
-        low, high = rows[column].quantile([0.25, 0.75])
-        spread = high - low
-        rows = rows[rows[column].between(low - 1.5 * spread, high + 1.5 * spread)]
-    return rows
+def puntos(resolucion):
+    filas = BASE_DATOS.loc[BASE_DATOS["RESTYPE1"] == resolucion, ["QBFASSET", "COST"]].dropna()
+    for columna in ("QBFASSET", "COST"):
+        limite_inferior, limite_superior = filas[columna].quantile([0.25, 0.75])
+        rango = limite_superior - limite_inferior
+        filas = filas[filas[columna].between(limite_inferior - 1.5 * rango, limite_superior + 1.5 * rango)]
+    return filas
 
 
-def table(headers, rows, class_name="data-table"):
+def crear_tabla(encabezados, filas, nombre_clase="tabla-datos"):
     return ui.tags.table(
-        ui.tags.thead(ui.tags.tr(*[ui.tags.th(h) for h in headers])),
-        ui.tags.tbody(*[ui.tags.tr(*[ui.tags.td(v) for v in row]) for row in rows]),
-        class_=class_name,
+        ui.tags.thead(ui.tags.tr(*[ui.tags.th(encabezado) for encabezado in encabezados])),
+        ui.tags.tbody(*[ui.tags.tr(*[ui.tags.td(valor_celda) for valor_celda in fila]) for fila in filas]),
+        class_=nombre_clase,
     )
 
 
-def density(values, grid):
-    bandwidth = 1.06 * np.std(values) * len(values) ** -0.2 or 1
+def calcular_densidad(valores, rejilla):
+    ancho_banda = 1.06 * np.std(valores) * len(valores) ** -0.2 or 1
     return [
-        sum(math.exp(-0.5 * ((x - value) / bandwidth) ** 2) for value in values)
-        / (len(values) * bandwidth * math.sqrt(2 * math.pi))
-        for x in grid
+        sum(math.exp(-0.5 * ((coordenada_x - valor) / ancho_banda) ** 2) for valor in valores)
+        / (len(valores) * ancho_banda * math.sqrt(2 * math.pi))
+        for coordenada_x in rejilla
     ]
 
 
-def scatter_figure(selection):
-    resolutions = RESOLUTIONS if selection == "__all__" else [selection]
-    colors = {"PA": "#3578b8", "PI": "#d88b36", "PO": "#52a36b"}
-    fig, ax = plt.subplots(figsize=(8, 5))
+def crear_grafico_dispersion(seleccion):
+    resoluciones = RESOLUCIONES if seleccion == "__todos__" else [seleccion]
+    colores = {"PA": "#3578b8", "PI": "#d88b36", "PO": "#52a36b"}
+    figura, eje = plt.subplots(figsize=(8, 5))
 
-    for resolution in resolutions:
-        data = points(resolution).sort_values("QBFASSET")
-        if data.empty:
+    for resolucion in resoluciones:
+        datos_grafico = puntos(resolucion).sort_values("QBFASSET")
+        if datos_grafico.empty:
             continue
-        color = colors.get(resolution, "#3578b8")
-        ax.scatter(data["QBFASSET"] / 1000, data["COST"] / 1000, color=color, alpha=0.5, label=resolution)
-        smooth = data.rolling(max(3, len(data) // 6), center=True, min_periods=1).mean()
-        ax.plot(smooth["QBFASSET"] / 1000, smooth["COST"] / 1000, color=color, linewidth=2)
+        color = colores.get(resolucion, "#3578b8")
+        eje.scatter(datos_grafico["QBFASSET"] / 1000, datos_grafico["COST"] / 1000, color=color, alpha=0.5, label=resolucion)
+        suavizado = datos_grafico.rolling(max(3, len(datos_grafico) // 6), center=True, min_periods=1).mean()
+        eje.plot(suavizado["QBFASSET"] / 1000, suavizado["COST"] / 1000, color=color, linewidth=2)
 
-    ax.set_xlabel("Activos (millones de dólares)")
-    ax.set_ylabel("Pérdidas (millones de dólares)")
-    ax.ticklabel_format(axis="both", style="plain", useOffset=False)
-    ax.legend()
-    fig.tight_layout()
-    return fig
+    eje.set_xlabel("Activos (millones de dólares)")
+    eje.set_ylabel("Pérdidas (millones de dólares)")
+    eje.ticklabel_format(axis="both", style="plain", useOffset=False)
+    eje.legend()
+    figura.tight_layout()
+    return figura
 
 
-def conclusions(selection):
-    resolutions = RESOLUTIONS if selection == "__all__" else [selection]
-    texts = {
+def conclusiones(seleccion):
+    resoluciones = RESOLUCIONES if seleccion == "__todos__" else [seleccion]
+    textos = {
         "PA": (
             "Entre mayores son los activos, mayores son las pérdidas. Aunque la curva se estabiliza para los bancos "
             "de mayor tamaño, existe demasiada variabilidad (bancos con activos parecidos muestran pérdidas muy "
@@ -85,68 +85,70 @@ def conclusions(selection):
             "no puede ser concluyente debido a la falta de observaciones. Se trata de bancos pequeños."
         ),
     }
-    return table(
+    return crear_tabla(
         ["Tipo", "Conclusión"],
-        [(resolution, texts[resolution]) for resolution in resolutions],
-        "data-table conclusion-table",
+        [(resolucion, textos[resolucion]) for resolucion in resoluciones],
+        "tabla-datos tabla-conclusiones",
     )
 
 
-def histogram_figure(resolution):
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
-    colors = ["#4385bd", "#d88b36", "#52a36b"]
+def crear_grafico_histograma(resolucion):
+    figura, ejes = plt.subplots(1, 3, figsize=(12, 4))
+    colores = ["#4385bd", "#d88b36", "#52a36b"]
 
-    for ax, size, color in zip(axes, ["Bajo", "Medio", "Alto"], colors):
-        values = DATA.loc[
-            (DATA["RESTYPE1"] == resolution) & (DATA["Tamaño de activos"] == size),
+    for eje, tamano, color in zip(ejes, ["Bajo", "Medio", "Alto"], colores):
+        valores = BASE_DATOS.loc[
+            (BASE_DATOS["RESTYPE1"] == resolucion) & (BASE_DATOS["Tamaño de activos"] == tamano),
             "COST",
         ].dropna().to_numpy() / 1000
 
-        if len(values):
-            bins = 100 if resolution == "PA" and size == "Alto" else 18
-            ax.hist(values, bins=bins, density=True, color=color, alpha=0.38)
-            grid = np.linspace(values.min(), values.max() or values.min() + 1, 100)
-            ax.plot(grid, density(values, grid), color=color)
+        if len(valores):
+            intervalos = 100 if resolucion == "PA" and tamano == "Alto" else 18
+            eje.hist(valores, bins=intervalos, density=True, color=color, alpha=0.38)
+            rejilla = np.linspace(valores.min(), valores.max() or valores.min() + 1, 100)
+            eje.plot(rejilla, calcular_densidad(valores, rejilla), color=color)
 
-        ax.set_title(f"{size} (n={len(values)})")
-        ax.set_xlabel("Pérdidas (millones de dólares)")
-        if resolution == "PA" and size == "Alto":
-            ax.set_xlim(0, 2000)
-    axes[0].set_ylabel("Densidad")
-    fig.tight_layout()
-    return fig
+        eje.set_title(tamano)
+        eje.set_xlabel("Pérdidas (millones de dólares)")
+        if resolucion == "PA" and tamano == "Alto":
+            eje.set_xlim(0, 2000)
+    ejes[0].set_ylabel("Densidad")
+    figura.tight_layout()
+    return figura
 
 
-def summary(resolution):
-    rows = []
-    for size in ["Bajo", "Medio", "Alto"]:
-        values = DATA.loc[
-            (DATA["RESTYPE1"] == resolution) & (DATA["Tamaño de activos"] == size),
+def resumen(resolucion):
+    filas = []
+    for tamano in ["Bajo", "Medio", "Alto"]:
+        valores = BASE_DATOS.loc[
+            (BASE_DATOS["RESTYPE1"] == resolucion) & (BASE_DATOS["Tamaño de activos"] == tamano),
             "COST",
         ].dropna()
-        rows.append((
-            size,
-            str(len(values)),
-            f"{values.mean() / 1000:,.2f}" if len(values) else "—",
-            f"{values.median() / 1000:,.2f}" if len(values) else "—",
+        filas.append((
+            tamano,
+            str(len(valores)),
+            f"{valores.mean() / 1000:,.2f}" if len(valores) else "—",
+            f"{valores.median() / 1000:,.2f}" if len(valores) else "—",
         ))
-    return rows
+    return filas
 
 
 ##############################################################################################
 
 
-app_ui = ui.page_fluid(
+interfaz_aplicacion = ui.page_fluid(
     ui.tags.style("""
         body { background: #f7f8fa; color: #202735; }
-        .content-section { background: white; border: 1px solid #e2e6ec;
+        .seccion-contenido { background: white; border: 1px solid #e2e6ec;
           border-radius: 10px; padding: 1.1rem 1.25rem; margin: 1rem 0; }
-        .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th, .data-table td { border-bottom: 1px solid #e7eaf0;
+        .tabla-datos { width: 100%; border-collapse: collapse; }
+        .tabla-datos th, .tabla-datos td { border-bottom: 1px solid #e7eaf0;
           padding: .55rem .65rem; text-align: left; }
-        .conclusion-table { table-layout: fixed; }
-        .conclusion-table th:first-child, .conclusion-table td:first-child { width: 18%; }
-        .conclusion-table td:last-child { overflow-wrap: anywhere; white-space: normal; vertical-align: top; }
+        .tabla-conclusiones { table-layout: fixed; }
+        .tabla-conclusiones-histogramas { table-layout: fixed; }
+        .tabla-conclusiones-histogramas th, .tabla-conclusiones-histogramas td { width: 100%; }
+        .tabla-conclusiones th:first-child, .tabla-conclusiones td:first-child { width: 18%; }
+        .tabla-conclusiones td:last-child { overflow-wrap: anywhere; white-space: normal; vertical-align: top; }
     """),
     ui.h1("Cierres y resoluciones bancarias de la Corporación Federal de Seguro de Depósitos"),
 
@@ -170,15 +172,15 @@ app_ui = ui.page_fluid(
                 ui.h4("Tipos de resoluciones"),
                 ui.tags.ul(
                     ui.tags.li(
-                        "Purchase and Assumption (PA): otro banco asume los depósitos asegurados y no asegurados "
+                        "Compra y asunción (PA): otro banco asume los depósitos asegurados y no asegurados "
                         "y puede adquirir algunos activos y pasivos."
                     ),
                     ui.tags.li(
-                        "Purchase and Assumption of insured deposits (PI): otro banco asume únicamente los "
+                        "Compra y asunción de depósitos asegurados (PI): otro banco asume únicamente los "
                         "depósitos asegurados."
                     ),
                     ui.tags.li(
-                        "Payout (PO): la FDIC paga directamente a los depositantes asegurados y liquida los "
+                        "Pago (PO): la FDIC paga directamente a los depositantes asegurados y liquida los "
                         "activos del banco."
                     ),
                 ),
@@ -188,7 +190,7 @@ app_ui = ui.page_fluid(
                     ui.tags.li("Medio: más de 85,43 millones y hasta 286,04 millones de dólares."),
                     ui.tags.li("Alto: más de 286,04 millones de dólares."),
                 ),
-                class_="content-section",
+                class_="seccion-contenido",
             ),
         ),
         #Pregunta 1
@@ -202,14 +204,14 @@ app_ui = ui.page_fluid(
                 #Gráficos de dispersión
                 ui.h4("Dispersión de los activos y pérdidas por tipo de resolución"),
                 ui.input_select(
-                    "scatter_resolution",
+                    "resolucion_dispersion",
                     "Tipos de resolución para el diagrama de dispersión",
-                    choices={"__all__": "Todos", **{code: code for code in RESOLUTIONS}},
-                    selected="__all__",
+                    choices={"__todos__": "Todos", **{codigo: codigo for codigo in RESOLUCIONES}},
+                    selected="__todos__",
                 ),
                 ui.layout_columns(
-                    ui.output_plot("scatter_plot"),
-                    ui.output_ui("conclusions_table"),
+                    ui.output_plot("grafico_dispersion"),
+                    ui.output_ui("tabla_conclusiones"),
                     col_widths=(8, 4),
                     fill=False,
                     gap="1rem",
@@ -217,43 +219,55 @@ app_ui = ui.page_fluid(
                 #Histogramas
                 ui.h4("Distribución de las pérdidas por tamaño de activos"),
                 ui.input_select(
-                    "resolution",
+                    "resolucion_histograma",
                     "Tipo de resolución para el histograma",
-                    choices={code: code for code in RESOLUTIONS},
-                    selected=RESOLUTIONS[0],
+                    choices={codigo: codigo for codigo in RESOLUCIONES},
+                    selected=RESOLUCIONES[0],
                 ),
-                ui.output_plot("histogram_plot"),
-                ui.output_ui("summary_table"),
-                class_="content-section",
+                ui.output_plot("grafico_histograma"),
+                ui.output_ui("tabla_resumen"),
+                ui.output_ui("conclusiones_histogramas"),
+                class_="seccion-contenido",
             ),
         ),
         ui.nav_panel("Pregunta 2", ui.p("Espacio reservado para definir la segunda pregunta del trabajo en grupo.")),
         ui.nav_panel("Pregunta 3", ui.p("Espacio reservado para definir la tercera pregunta del trabajo en grupo.")),
-        id="main_tabs",
+        id="pestanas_principales",
         selected="Descripción de los datos",
     ),
 )
 
 
-def server(input, output, session):
+def servidor(entrada, salida, sesion):
     @render.ui
-    def conclusions_table():
-        return conclusions(input.scatter_resolution())
+    def tabla_conclusiones():
+        return conclusiones(entrada.resolucion_dispersion())
 
     @render.plot
-    def scatter_plot():
-        return scatter_figure(input.scatter_resolution())
+    def grafico_dispersion():
+        return crear_grafico_dispersion(entrada.resolucion_dispersion())
 
     @render.plot
-    def histogram_plot():
-        return histogram_figure(input.resolution())
+    def grafico_histograma():
+        return crear_grafico_histograma(entrada.resolucion_histograma())
 
     @render.ui
-    def summary_table():
-        return table(
+    def tabla_resumen():
+        return crear_tabla(
             ["Tamaño de activos", "Observaciones", "Media de las pérdidas (millones de dólares)", "Mediana de las pérdidas (millones de dólares)"],
-            summary(input.resolution()),
+            resumen(entrada.resolucion_histograma()),
+        )
+
+    @render.ui
+    def conclusiones_histogramas():
+        return crear_tabla(
+            ["Conclusiones"],
+            [("Las distribuciones de las pérdidas para los bancos con activos bajos y medios poseen una "
+              "distribución más marcada y muy asimétrica hacia la derecha, diferenciándose de los bancos "
+              "con activos grandes, que no cuentan con una distribución apreciable, lo cual es probablemente "
+              "debido a la escasez de datos",)],
+            "tabla-datos tabla-conclusiones-histogramas",
         )
 
 
-app = App(app_ui, server)
+app = App(interfaz_aplicacion, servidor)
