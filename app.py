@@ -242,13 +242,14 @@ interfaz_aplicacion = ui.page_fluid(
     ),
 
     ui.input_slider(
-        "rango_anios",
-        "Seleccione el período de análisis:",
-        min=1992,
-        max=2026,
-        value=(1992, 2026),
-        sep=""
-    ),
+    "anio_inicio",
+    "Seleccione el período de 10 años:",
+    min=1992,
+    max=2017,
+    value=1992,
+    step=1,
+    sep=""
+),
 
     ui.h4("Cantidad de quiebras bancarias por año"),
     ui.output_plot("grafico_quiebras"),
