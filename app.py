@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from shiny import App, render, ui
+from shiny import ui
 
 #Archivo 
 BASE_DATOS = pd.read_csv(Path(__file__).with_name("Failures_10_26_2026.csv"))
@@ -136,9 +137,13 @@ def resumen(resolucion):
 ##############################################################################################
 # Funciones para la pregunta 2
 
-def datos_quiebras_por_anio(anio_inicio):
+def datos_quiebras_por_anio(anio_inicio, tipo_periodo="decada"):
 
-    anio_final = anio_inicio + 9
+    if tipo_periodo == "completo":
+        anio_inicio = 1992
+        anio_final = 2026
+    else:
+        anio_final = anio_inicio + 9
 
     datos = BASE_DATOS[
         (BASE_DATOS["RESTYPE"] == "FAILURE") &
@@ -222,9 +227,39 @@ interfaz_aplicacion = ui.page_fluid(
                 ),
                 class_="seccion-contenido",
             ),
+        ui.tags.section(
+ui.h3("Diccionario de la pregunta 2"),
+
+ui.h4("Variables utilizadas"),
+
+        ui.tags.ul(
+            ui.tags.li(
+                "Año de quiebra (FAILYR): año en que se registró "
+                "la quiebra de la institución bancaria."
+            ),
+            ui.tags.li(
+                "Pérdidas económicas (COST): costo económico "
+                "asociado con la quiebra bancaria. "
+                "En los gráficos se expresa en millones de dólares."
+            ),
+            ui.tags.li(
+                "Cantidad de quiebras: número de instituciones "
+                "bancarias que quebraron durante cada año."
+            )
         ),
-        #Pregunta 1
-        ui.nav_panel(
+
+ui.h4("Períodos históricos"),
+
+        ui.tags.ul(
+            ui.tags.li("Antes de la crisis financiera: 1992-2006."),
+            ui.tags.li("Durante la crisis financiera: 2007-2012."),
+            ui.tags.li("Después de la crisis financiera: 2013-2026.")
+        ),
+        class_="seccion-contenido",
+    ),
+),
+#Pregunta 1
+ui.nav_panel(
             "Pregunta 1",
             ui.tags.section(
                 ui.h3(ui.strong(
@@ -270,27 +305,80 @@ interfaz_aplicacion = ui.page_fluid(
         "en Estados Unidos y qué relación presenta con las pérdidas "
         "económicas registradas durante el período de estudio?"
     ),
-
+    ui.input_radio_buttons(
+        "tipo_periodo",
+        "Seleccione el tipo de análisis:",
+    {
+        "decada": "Períodos de 10 años",
+        "completo": "Período completo (1992–2026)"
+    },
+    selected="decada",
+    inline=True
+),
+    ui.panel_conditional(
+    "input.tipo_periodo === 'decada'",
     ui.input_slider(
-    "anio_inicio",
-    "Seleccione el período de 10 años:",
-    min=1992,
-    max=2017,
-    value=1992,
-    step=1,
-    sep=""
+        "anio_inicio",
+        "Seleccione el período de 10 años:",
+        min=1992,
+        max=2017,
+        value=1992,
+        step=1,
+        sep=""
+    )
 ),
 
     ui.h4("Cantidad de quiebras bancarias por año"),
-    ui.output_plot("grafico_quiebras"),
+
+    ui.layout_columns(
+        ui.card(
+            ui.output_plot("grafico_quiebras")
+        ),
+        ui.card(
+            ui.h5("Interpretación de las quiebras bancarias"),
+            ui.div(
+                ui.output_text("interpretacion_quiebras"),
+                style="white-space: pre-line; line-height: 1.8;"
+            )
+        ),
+        col_widths=(8, 4)
+    ),
 
     ui.h4("Pérdidas económicas totales por año"),
-    ui.output_plot("grafico_perdidas"),
+
+    ui.layout_columns(
+        ui.card(
+            ui.output_plot("grafico_perdidas")
+        ),
+        ui.card(
+            ui.h5("Interpretación de las pérdidas económicas"),
+            ui.div(
+                ui.output_text("interpretacion_perdidas"),
+                style="white-space: pre-line; line-height: 1.8;"
+            )
+        ),
+        col_widths=(8, 4)
+    ),
+
+    ui.h4("Relación entre quiebras y pérdidas económicas por período histórico"),
+
+    ui.layout_columns(
+        ui.card(
+            ui.output_plot("grafico_dispersion_historica")
+        ),
+        ui.card(
+            ui.h5("Interpretación de la relación entre quiebras y pérdidas"),
+            ui.div(
+                ui.output_text("interpretacion_dispersion"),
+                style="white-space: pre-line; line-height: 1.8;"
+            )
+        ),
+        col_widths=(8, 4)
+    ),
 
     ui.h4("Resumen de quiebras y pérdidas por año"),
     ui.output_data_frame("tabla_quiebras"),
 
-    class_="seccion-contenido",
 ),
         ui.nav_panel("Pregunta 3", ui.p("Espacio reservado para definir la tercera pregunta del trabajo en grupo.")),
         id="pestanas_principales",
@@ -300,6 +388,271 @@ interfaz_aplicacion = ui.page_fluid(
 
 
 def servidor(entrada, salida, sesion):
+
+    @render.text
+    def interpretacion_quiebras():
+
+        tipo_periodo = entrada.tipo_periodo()
+
+        # Obtener todos los años para comparar las etapas históricas
+        resumen = datos_quiebras_por_anio(1992, "completo")
+
+        if tipo_periodo == "decada":
+
+            periodos = [
+                (1992, 2006, "Antes de la crisis"),
+                (2007, 2012, "Durante la crisis financiera"),
+                (2013, 2026, "Después de la crisis")
+            ]
+
+            interpretaciones = []
+            resultados = []
+
+            for inicio, final, nombre in periodos:
+
+                grupo = resumen[
+                    (resumen["FAILYR"] >= inicio) &
+                    (resumen["FAILYR"] <= final)
+                ]
+
+                total = int(grupo["cantidad_quiebras"].sum())
+                promedio = grupo["cantidad_quiebras"].mean()
+
+                maximo = grupo.loc[grupo["cantidad_quiebras"].idxmax()]
+                anio_maximo = int(maximo["FAILYR"])
+                cantidad_maxima = int(maximo["cantidad_quiebras"])
+
+                interpretaciones.append(
+                    f"{nombre} ({inicio}-{final}): "
+                    f"Se registraron {total} quiebras bancarias, "
+                    f"con un promedio de {promedio:.2f} quiebras anuales. "
+                    f"El año con mayor cantidad fue {anio_maximo}, "
+                    f"con {cantidad_maxima} quiebras."
+                )
+
+                resultados.append((nombre, promedio))
+
+            mayor = max(resultados, key=lambda x: x[1])
+            menor = min(resultados, key=lambda x: x[1])
+
+            comparacion = (
+                "\n\nDiferencias relevantes: "
+                f"La etapa con mayor promedio anual de quiebras fue "
+                f"{mayor[0]}, mientras que la de menor promedio fue "
+                f"{menor[0]}. "
+                "Esta comparación permite identificar diferencias "
+                "en la frecuencia de las quiebras bancarias entre "
+                "las tres etapas históricas."
+            )
+
+            return "\n\n".join(interpretaciones) + comparacion
+
+        else:
+
+            total = int(resumen["cantidad_quiebras"].sum())
+            promedio = resumen["cantidad_quiebras"].mean()
+
+            maximo = resumen.loc[resumen["cantidad_quiebras"].idxmax()]
+            anio_maximo = int(maximo["FAILYR"])
+            cantidad_maxima = int(maximo["cantidad_quiebras"])
+
+            return (
+                f"Durante el período completo de 1992 a 2026 "
+                f"se registraron {total} quiebras bancarias, "
+                f"con un promedio de {promedio:.2f} quiebras por año. "
+                f"El año con mayor cantidad fue {anio_maximo}, "
+                f"con {cantidad_maxima} quiebras. "
+                "La evolución temporal permite identificar períodos "
+                "de mayor concentración de quiebras, especialmente "
+                "en los años asociados con la crisis financiera, "
+                "así como etapas posteriores con una menor frecuencia."
+            )
+    @render.text
+    def interpretacion_perdidas():
+
+        tipo_periodo = entrada.tipo_periodo()
+        resumen = datos_quiebras_por_anio(1992, "completo")
+
+        if tipo_periodo == "decada":
+
+            periodos = [
+                (1992, 2006, "Antes de la crisis"),
+                (2007, 2012, "Durante la crisis financiera"),
+                (2013, 2026, "Después de la crisis")
+            ]
+
+            interpretaciones = []
+            resultados = []
+
+            for inicio, final, nombre in periodos:
+
+                grupo = resumen[
+                    (resumen["FAILYR"] >= inicio) &
+                    (resumen["FAILYR"] <= final)
+                ]
+
+                total = grupo["perdidas_totales"].sum()
+                promedio = grupo["perdidas_totales"].mean()
+
+                maximo = grupo.loc[grupo["perdidas_totales"].idxmax()]
+                anio_maximo = int(maximo["FAILYR"])
+                perdida_maxima = maximo["perdidas_totales"]
+
+                interpretaciones.append(
+                    f"{nombre} ({inicio}-{final}): "
+                    f"Las pérdidas económicas acumuladas fueron de "
+                    f"{total:,.2f} millones de dólares, "
+                    f"con un promedio anual de {promedio:,.2f} millones. "
+                    f"El año con mayores pérdidas fue {anio_maximo}, "
+                    f"con {perdida_maxima:,.2f} millones."
+                )
+
+                resultados.append((nombre, promedio))
+
+            mayor = max(resultados, key=lambda x: x[1])
+            menor = min(resultados, key=lambda x: x[1])
+
+            diferencias = (
+                f"Diferencias relevantes: La etapa con mayores pérdidas "
+                f"económicas promedio por año fue {mayor[0]}, "
+                f"mientras que la de menores pérdidas fue {menor[0]}. "
+                f"Esto evidencia diferencias en el impacto económico "
+                f"de las quiebras bancarias entre las tres etapas históricas."
+            )
+
+            return "\n\n".join(interpretaciones + [diferencias])
+
+        else:
+
+            total = resumen["perdidas_totales"].sum()
+            promedio = resumen["perdidas_totales"].mean()
+
+            maximo = resumen.loc[resumen["perdidas_totales"].idxmax()]
+            anio_maximo = int(maximo["FAILYR"])
+            perdida_maxima = maximo["perdidas_totales"]
+
+            return (
+                f"Durante el período completo de 1992 a 2026, "
+                f"las pérdidas económicas acumuladas fueron de "
+                f"{total:,.2f} millones de dólares, "
+                f"con un promedio anual de {promedio:,.2f} millones.\n\n"
+                f"El año con mayores pérdidas fue {anio_maximo}, "
+                f"con {perdida_maxima:,.2f} millones de dólares.\n\n"
+                f"La evolución temporal muestra que las pérdidas "
+                f"no fueron constantes a lo largo del período. "
+                f"Se observan años con pérdidas considerablemente "
+                f"más elevadas que otros, lo que permite identificar "
+                f"momentos de mayor impacto económico asociado "
+                f"a las quiebras bancarias."
+            )
+    @render.text
+    def interpretacion_dispersion():
+
+        tipo_periodo = entrada.tipo_periodo()
+        resumen = datos_quiebras_por_anio(1992, "completo")
+
+        if tipo_periodo == "decada":
+
+            periodos = [
+                (1992, 2006, "Antes de la crisis"),
+                (2007, 2012, "Durante la crisis financiera"),
+                (2013, 2026, "Después de la crisis")
+            ]
+
+            interpretaciones = []
+            resultados = []
+
+            for inicio, final, nombre in periodos:
+
+                grupo = resumen[
+                    (resumen["FAILYR"] >= inicio) &
+                    (resumen["FAILYR"] <= final)
+                ]
+
+                correlacion = grupo[
+                    "cantidad_quiebras"
+                ].corr(grupo["perdidas_totales"])
+
+                if pd.isna(correlacion):
+                    relacion = "no se pudo determinar una correlación"
+                elif correlacion >= 0.7:
+                    relacion = "una relación positiva fuerte"
+                elif correlacion >= 0.3:
+                    relacion = "una relación positiva moderada"
+                elif correlacion > -0.3:
+                    relacion = "una relación lineal débil"
+                elif correlacion > -0.7:
+                    relacion = "una relación negativa moderada"
+                else:
+                    relacion = "una relación negativa fuerte"
+
+                interpretaciones.append(
+                    f"{nombre} ({inicio}-{final}): "
+                    f"Se obtuvo una correlación de Pearson de "
+                    f"{correlacion:.2f}, lo que indica {relacion} "
+                    f"entre la cantidad anual de quiebras bancarias "
+                    f"y las pérdidas económicas registradas."
+                )
+
+                resultados.append((nombre, correlacion))
+
+            validos = [
+                (nombre, r)
+                for nombre, r in resultados
+                if not pd.isna(r)
+            ]
+
+            if validos:
+                mayor = max(validos, key=lambda x: abs(x[1]))
+
+                diferencias = (
+                    f"Diferencias relevantes: La etapa con mayor "
+                    f"intensidad de asociación lineal fue {mayor[0]}, "
+                    f"con una correlación de {mayor[1]:.2f}. "
+                    f"Esto permite observar que la relación entre "
+                    f"la cantidad de quiebras y las pérdidas económicas "
+                    f"no necesariamente tuvo la misma intensidad "
+                    f"en las tres etapas históricas."
+                )
+            else:
+                diferencias = (
+                    "Diferencias relevantes: No fue posible comparar "
+                    "las correlaciones de las etapas históricas."
+                )
+
+            return "\n\n".join(interpretaciones + [diferencias])
+
+        else:
+
+            correlacion = resumen[
+                "cantidad_quiebras"
+            ].corr(resumen["perdidas_totales"])
+
+            if pd.isna(correlacion):
+                relacion = "no se pudo determinar una correlación"
+            elif correlacion >= 0.7:
+                relacion = "una relación positiva fuerte"
+            elif correlacion >= 0.3:
+                relacion = "una relación positiva moderada"
+            elif correlacion > -0.3:
+                relacion = "una relación lineal débil"
+            elif correlacion > -0.7:
+                relacion = "una relación negativa moderada"
+            else:
+                relacion = "una relación negativa fuerte"
+
+            return (
+                f"Durante el período completo de 1992 a 2026, "
+                f"la correlación de Pearson entre la cantidad anual "
+                f"de quiebras bancarias y las pérdidas económicas "
+                f"fue de {correlacion:.2f}.\n\n"
+                f"Este resultado indica {relacion} entre "
+                f"ambas variables.\n\n"
+                f"Es importante considerar que una correlación "
+                f"no implica causalidad y que las pérdidas económicas "
+                f"también pueden depender de la magnitud de las "
+                f"instituciones bancarias que quebraron."
+            )
     @render.ui
     def tabla_conclusiones():
         return conclusiones(entrada.resolucion_dispersion())
@@ -336,10 +689,12 @@ def servidor(entrada, salida, sesion):
     def grafico_quiebras():
 
         anio_inicio = entrada.anio_inicio()
+            
+        tipo_periodo = entrada.tipo_periodo()
+        
+        resumen = datos_quiebras_por_anio(anio_inicio, tipo_periodo)
 
-        resumen = datos_quiebras_por_anio(anio_inicio)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
+        fig, ax = plt.subplots(figsize=(10, 3.5))
 
         ax.bar(
             resumen["FAILYR"],
@@ -352,7 +707,7 @@ def servidor(entrada, salida, sesion):
         ax.set_xlabel("Año")
         ax.set_ylabel("Cantidad de quiebras")
 
-        ax.set_xticks(range(anio_inicio, anio_inicio + 10))
+        ax.set_xticks(resumen["FAILYR"][::5] if tipo_periodo == "completo" else resumen["FAILYR"])
 
         plt.xticks(rotation=45)
 
@@ -367,10 +722,10 @@ def servidor(entrada, salida, sesion):
     def grafico_perdidas():
 
         anio_inicio = entrada.anio_inicio()
+        tipo_periodo = entrada.tipo_periodo()
 
-        resumen = datos_quiebras_por_anio(anio_inicio)
-
-        fig, ax = plt.subplots(figsize=(10, 5))
+        resumen = datos_quiebras_por_anio(anio_inicio, tipo_periodo)
+        fig, ax = plt.subplots(figsize=(10, 3.5))
 
         ax.plot(
             resumen["FAILYR"],
@@ -385,7 +740,7 @@ def servidor(entrada, salida, sesion):
         ax.set_xlabel("Año")
         ax.set_ylabel("Pérdidas totales (millones de dólares)")
 
-        ax.set_xticks(range(anio_inicio, anio_inicio + 10))
+        ax.set_xticks(resumen["FAILYR"][::5] if tipo_periodo == "completo" else resumen["FAILYR"])
 
         ax.grid(True, alpha=0.3)
 
@@ -394,15 +749,63 @@ def servidor(entrada, salida, sesion):
         plt.tight_layout()
 
         return fig
+        
+    # Gráfico de dispersión por períodos históricos para la pregunta 2
 
+    @render.plot
+    def grafico_dispersion_historica():
+
+        anio_inicio = entrada.anio_inicio()
+        tipo_periodo = entrada.tipo_periodo()
+
+        resumen = datos_quiebras_por_anio(anio_inicio, tipo_periodo)
+
+        fig, ax = plt.subplots(figsize=(10, 3.5))
+
+        periodos = [
+            (1992, 2006, "Antes de la crisis (1992-2006)", "steelblue"),
+            (2007, 2012, "Crisis financiera (2007-2012)", "darkred"),
+            (2013, 2026, "Después de la crisis (2013-2026)", "seagreen")
+        ]
+
+        for inicio, final, nombre, color in periodos:
+
+            grupo = resumen[
+                (resumen["FAILYR"] >= inicio) &
+                (resumen["FAILYR"] <= final)
+            ]
+
+            if not grupo.empty:
+                ax.scatter(
+                    grupo["cantidad_quiebras"],
+                    grupo["perdidas_totales"],
+                    label=nombre,
+                    color=color,
+                    s=70,
+                    alpha=0.8
+                )
+
+        ax.set_title("Relación entre quiebras y pérdidas económicas")
+        ax.set_xlabel("Cantidad de quiebras bancarias")
+        ax.set_ylabel("Pérdidas económicas (millones de dólares)")
+
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+
+        return fig
+        
     # Tabla interactiva para la pregunta 2
 
     @render.data_frame
     def tabla_quiebras():
 
         anio_inicio = entrada.anio_inicio()
-
-        resumen = datos_quiebras_por_anio(anio_inicio)
+        tipo_periodo = entrada.tipo_periodo()
+        resumen = datos_quiebras_por_anio(anio_inicio, tipo_periodo)
+        
+        resumen["perdidas_totales"] = resumen["perdidas_totales"].round(2)
 
         resumen = resumen.rename(columns={
             "FAILYR": "Año",
@@ -410,5 +813,8 @@ def servidor(entrada, salida, sesion):
             "perdidas_totales": "Pérdidas totales (millones de dólares)"
         })
 
+        resumen["Pérdidas totales (millones de dólares)"] = resumen["Pérdidas totales (millones de dólares)"].map(lambda x: f"{x:.2f}")
+
         return render.DataGrid(resumen, filters=False)
+
 app = App(interfaz_aplicacion, servidor)
