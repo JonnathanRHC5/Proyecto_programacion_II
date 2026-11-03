@@ -230,7 +230,34 @@ interfaz_aplicacion = ui.page_fluid(
                 class_="seccion-contenido",
             ),
         ),
-        ui.nav_panel("Pregunta 2", ui.p("Espacio reservado para definir la segunda pregunta del trabajo en grupo.")),
+        ui.nav_panel(
+    "Pregunta 2",
+
+    ui.h3("Evolución temporal de las quiebras bancarias"),
+
+    ui.p(
+        "¿Cómo ha evolucionado la cantidad de quiebras bancarias "
+        "en Estados Unidos y qué relación presenta con las pérdidas "
+        "económicas registradas durante el período de estudio?"
+    ),
+
+    ui.input_slider(
+        "rango_anios",
+        "Seleccione el período de análisis:",
+        min=1992,
+        max=2026,
+        value=(1992, 2026),
+        sep=""
+    ),
+
+    ui.h4("Cantidad de quiebras bancarias por año"),
+    ui.output_plot("grafico_quiebras"),
+
+    ui.h4("Pérdidas económicas totales por año"),
+    ui.output_plot("grafico_perdidas"),
+
+    class_="seccion-contenido",
+),
         ui.nav_panel("Pregunta 3", ui.p("Espacio reservado para definir la tercera pregunta del trabajo en grupo.")),
         id="pestanas_principales",
         selected="Descripción de los datos",
