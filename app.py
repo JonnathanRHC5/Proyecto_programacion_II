@@ -287,6 +287,9 @@ interfaz_aplicacion = ui.page_fluid(
     ui.h4("Pérdidas económicas totales por año"),
     ui.output_plot("grafico_perdidas"),
 
+    ui.h4("Resumen de quiebras y pérdidas por año"),
+    ui.output_data_frame("tabla_quiebras"),
+
     class_="seccion-contenido",
 ),
         ui.nav_panel("Pregunta 3", ui.p("Espacio reservado para definir la tercera pregunta del trabajo en grupo.")),
@@ -391,4 +394,21 @@ def servidor(entrada, salida, sesion):
         plt.tight_layout()
 
         return fig
+
+    # Tabla interactiva para la pregunta 2
+
+    @render.data_frame
+    def tabla_quiebras():
+
+        anio_inicio = entrada.anio_inicio()
+
+        resumen = datos_quiebras_por_anio(anio_inicio)
+
+        resumen = resumen.rename(columns={
+            "FAILYR": "Año",
+            "cantidad_quiebras": "Cantidad de quiebras",
+            "perdidas_totales": "Pérdidas totales (millones de dólares)"
+        })
+
+        return render.DataGrid(resumen, filters=False)
 app = App(interfaz_aplicacion, servidor)
