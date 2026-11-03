@@ -151,6 +151,16 @@ def datos_quiebras_por_anio(anio_inicio):
         perdidas_totales=("COST", "sum")
     ).reset_index()
 
+    resumen = resumen.set_index("FAILYR")
+
+    resumen = resumen.reindex(
+        range(anio_inicio, anio_final + 1),
+        fill_value=0
+    )
+
+    resumen = resumen.reset_index()
+    resumen = resumen.rename(columns={"index": "FAILYR"})
+
     resumen["perdidas_totales"] = resumen["perdidas_totales"] / 1000
 
     return resumen
@@ -317,5 +327,68 @@ def servidor(entrada, salida, sesion):
             "tabla-datos tabla-conclusiones-histogramas",
         )
 
+    # Gráfico de barras para la pregunta 2
 
+    @render.plot
+    def grafico_quiebras():
+
+        anio_inicio = entrada.anio_inicio()
+
+        resumen = datos_quiebras_por_anio(anio_inicio)
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        ax.bar(
+            resumen["FAILYR"],
+            resumen["cantidad_quiebras"],
+            color="steelblue"
+        )
+
+        ax.set_title("Cantidad de quiebras bancarias por año")
+
+        ax.set_xlabel("Año")
+        ax.set_ylabel("Cantidad de quiebras")
+
+        ax.set_xticks(range(anio_inicio, anio_inicio + 10))
+
+        plt.xticks(rotation=45)
+
+        plt.tight_layout()
+
+        return fig
+
+    
+    # Gráfico de líneas de pérdidas económicas para la pregunta 2
+
+    @render.plot
+    def grafico_perdidas():
+
+        anio_inicio = entrada.anio_inicio()
+
+        resumen = datos_quiebras_por_anio(anio_inicio)
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        ax.plot(
+            resumen["FAILYR"],
+            resumen["perdidas_totales"],
+            marker="o",
+            color="darkred",
+            linewidth=2
+        )
+
+        ax.set_title("Pérdidas económicas por año")
+
+        ax.set_xlabel("Año")
+        ax.set_ylabel("Pérdidas totales (millones de dólares)")
+
+        ax.set_xticks(range(anio_inicio, anio_inicio + 10))
+
+        ax.grid(True, alpha=0.3)
+
+        plt.xticks(rotation=45)
+
+        plt.tight_layout()
+
+        return fig
 app = App(interfaz_aplicacion, servidor)
