@@ -134,8 +134,28 @@ def resumen(resolucion):
 
 
 ##############################################################################################
+# Funciones para la pregunta 2
 
+def datos_quiebras_por_anio(anio_inicio):
 
+    anio_final = anio_inicio + 9
+
+    datos = BASE_DATOS[
+        (BASE_DATOS["RESTYPE"] == "FAILURE") &
+        (BASE_DATOS["FAILYR"] >= anio_inicio) &
+        (BASE_DATOS["FAILYR"] <= anio_final)
+    ].copy()
+
+    resumen = datos.groupby("FAILYR").agg(
+        cantidad_quiebras=("FAILYR", "size"),
+        perdidas_totales=("COST", "sum")
+    ).reset_index()
+
+    resumen["perdidas_totales"] = resumen["perdidas_totales"] / 1000
+
+    return resumen
+##############################################################################################
+# Interfaz de la aplicación
 interfaz_aplicacion = ui.page_fluid(
     ui.tags.style("""
         body { background: #f7f8fa; color: #202735; }
