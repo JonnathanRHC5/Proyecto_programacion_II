@@ -560,66 +560,59 @@ def servidor(entrada, salida, sesion):
             ]
 
             interpretaciones = []
-            resultados = []
 
-                    total_quiebras = resumen["cantidad_quiebras"].sum()
-        total_perdidas = resumen["perdidas_totales"].sum()
+            for inicio, final, nombre in periodos:
 
-        anio_mas_quiebras = resumen.loc[
-            resumen["cantidad_quiebras"].idxmax(), "FAILYR"
-        ]
+                grupo = resumen[
+                    (resumen["FAILYR"] >= inicio) &
+                    (resumen["FAILYR"] <= final)
+                ]
 
-        anio_mas_perdidas = resumen.loc[
-            resumen["perdidas_totales"].idxmax(), "FAILYR"
-        ]
+                total_quiebras = grupo["cantidad_quiebras"].sum()
+                total_perdidas = grupo["perdidas_totales"].sum()
 
-        return (
-            f"Durante el período completo de 1992 a 2026 "
-            f"se registraron {total_quiebras:.0f} quiebras "
-            f"bancarias, con pérdidas económicas acumuladas "
-            f"de {total_perdidas:.2f} millones de dólares.\n\n"
-            f"El año con mayor cantidad de quiebras bancarias "
-            f"fue {anio_mas_quiebras}, mientras que el año "
-            f"con mayores pérdidas económicas fue "
-            f"{anio_mas_perdidas}.\n\n"
-            f"Estos resultados permiten observar la evolución "
-            f"de las quiebras bancarias y las pérdidas económicas "
-            f"a lo largo del período de estudio. "
-            f"Es importante considerar que las pérdidas "
-            f"económicas no dependen únicamente de la cantidad "
-            f"de instituciones que quebraron, sino también "
-            f"de su magnitud."
-        )
+                interpretaciones.append(
+                    f"{nombre} ({inicio}-{final}): "
+                    f"Se registraron {total_quiebras:.0f} quiebras "
+                    f"bancarias, con pérdidas económicas acumuladas "
+                    f"de {total_perdidas:.2f} millones de dólares. "
+                    f"Estos resultados permiten observar la evolución "
+                    f"de las quiebras bancarias y las pérdidas económicas "
+                    f"durante esta etapa histórica."
+                )
+
+            return "\n\n".join(interpretaciones)
+
         else:
 
-                    total_quiebras = resumen["cantidad_quiebras"].sum()
-        total_perdidas = resumen["perdidas_totales"].sum()
+            total_quiebras = resumen["cantidad_quiebras"].sum()
+            total_perdidas = resumen["perdidas_totales"].sum()
 
-        anio_mas_quiebras = resumen.loc[
-            resumen["cantidad_quiebras"].idxmax(), "FAILYR"
-        ]
+            anio_mas_quiebras = resumen.loc[
+                resumen["cantidad_quiebras"].idxmax(), "FAILYR"
+            ]
 
-        anio_mas_perdidas = resumen.loc[
-            resumen["perdidas_totales"].idxmax(), "FAILYR"
-        ]
+            anio_mas_perdidas = resumen.loc[
+                resumen["perdidas_totales"].idxmax(), "FAILYR"
+            ]
 
-        return (
-            f"Durante el período completo de 1992 a 2026 "
-            f"se registraron {total_quiebras:.0f} quiebras "
-            f"bancarias, con pérdidas económicas acumuladas "
-            f"de {total_perdidas:.2f} millones de dólares.\n\n"
-            f"El año con mayor cantidad de quiebras bancarias "
-            f"fue {anio_mas_quiebras}, mientras que el año "
-            f"con mayores pérdidas económicas fue "
-            f"{anio_mas_perdidas}.\n\n"
-            f"Estos resultados permiten observar la evolución "
-            f"de las quiebras bancarias y las pérdidas económicas "
-            f"a lo largo del período de estudio. "
-            f"Es importante considerar que las pérdidas "
-            f"económicas no dependen únicamente de la cantidad "
-            f"de instituciones que quebraron, sino también "
-            f"de su magnitud."
-        )
+            return (
+                f"Durante el período completo de 1992 a 2026 "
+                f"se registraron {total_quiebras:.0f} quiebras "
+                f"bancarias, con pérdidas económicas acumuladas "
+                f"de {total_perdidas:.2f} millones de dólares.\n\n"
+                f"El año con mayor cantidad de quiebras bancarias "
+                f"fue {anio_mas_quiebras}, mientras que el año "
+                f"con mayores pérdidas económicas fue "
+                f"{anio_mas_perdidas}.\n\n"
+                f"Estos resultados permiten observar la evolución "
+                f"de las quiebras bancarias y las pérdidas económicas "
+                f"a lo largo del período de estudio. "
+                f"Es importante considerar que las pérdidas "
+                f"económicas no dependen únicamente de la cantidad "
+                f"de instituciones que quebraron, sino también "
+                f"de su magnitud."
+            )
             
     @render.ui
     def tabla_conclusiones():
