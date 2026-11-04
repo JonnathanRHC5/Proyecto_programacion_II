@@ -575,10 +575,7 @@ def servidor(entrada, salida, sesion):
                     f"{nombre} ({inicio}-{final}): "
                     f"Se registraron {total_quiebras:.0f} quiebras "
                     f"bancarias, con pérdidas económicas acumuladas "
-                    f"de {total_perdidas:.2f} millones de dólares. "
-                    f"Estos resultados permiten observar la evolución "
-                    f"de las quiebras bancarias y las pérdidas económicas "
-                    f"durante esta etapa histórica."
+                    f"de {total_perdidas:.2f} millones de dólares."
                 )
 
             return "\n\n".join(interpretaciones)
