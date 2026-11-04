@@ -296,10 +296,10 @@ ui.nav_panel(
             ),
         ),
         ui.nav_panel(
-    "Pregunta 2",
+    "Pregunta 2",f
 
-    ui.h3("Evolución temporal de las quiebras bancarias"),
-
+    ui.h3(ui.strong("Evolución temporal de las quiebras bancarias")),
+            
     ui.p(
         "¿Cómo ha evolucionado la cantidad de quiebras bancarias "
         "en Estados Unidos y qué relación presenta con las pérdidas "
@@ -562,97 +562,65 @@ def servidor(entrada, salida, sesion):
             interpretaciones = []
             resultados = []
 
-            for inicio, final, nombre in periodos:
+                    total_quiebras = resumen["cantidad_quiebras"].sum()
+        total_perdidas = resumen["perdidas_totales"].sum()
 
-                grupo = resumen[
-                    (resumen["FAILYR"] >= inicio) &
-                    (resumen["FAILYR"] <= final)
-                ]
+        anio_mas_quiebras = resumen.loc[
+            resumen["cantidad_quiebras"].idxmax(), "FAILYR"
+        ]
 
-                correlacion = grupo[
-                    "cantidad_quiebras"
-                ].corr(grupo["perdidas_totales"])
+        anio_mas_perdidas = resumen.loc[
+            resumen["perdidas_totales"].idxmax(), "FAILYR"
+        ]
 
-                if pd.isna(correlacion):
-                    relacion = "no se pudo determinar una correlación"
-                elif correlacion >= 0.7:
-                    relacion = "una relación positiva fuerte"
-                elif correlacion >= 0.3:
-                    relacion = "una relación positiva moderada"
-                elif correlacion > -0.3:
-                    relacion = "una relación lineal débil"
-                elif correlacion > -0.7:
-                    relacion = "una relación negativa moderada"
-                else:
-                    relacion = "una relación negativa fuerte"
-
-                interpretaciones.append(
-                    f"{nombre} ({inicio}-{final}): "
-                    f"Se obtuvo una correlación de Pearson de "
-                    f"{correlacion:.2f}, lo que indica {relacion} "
-                    f"entre la cantidad anual de quiebras bancarias "
-                    f"y las pérdidas económicas registradas."
-                )
-
-                resultados.append((nombre, correlacion))
-
-            validos = [
-                (nombre, r)
-                for nombre, r in resultados
-                if not pd.isna(r)
-            ]
-
-            if validos:
-                mayor = max(validos, key=lambda x: abs(x[1]))
-
-                diferencias = (
-                    f"Diferencias relevantes: La etapa con mayor "
-                    f"intensidad de asociación lineal fue {mayor[0]}, "
-                    f"con una correlación de {mayor[1]:.2f}. "
-                    f"Esto permite observar que la relación entre "
-                    f"la cantidad de quiebras y las pérdidas económicas "
-                    f"no necesariamente tuvo la misma intensidad "
-                    f"en las tres etapas históricas."
-                )
-            else:
-                diferencias = (
-                    "Diferencias relevantes: No fue posible comparar "
-                    "las correlaciones de las etapas históricas."
-                )
-
-            return "\n\n".join(interpretaciones + [diferencias])
-
+        return (
+            f"Durante el período completo de 1992 a 2026 "
+            f"se registraron {total_quiebras:.0f} quiebras "
+            f"bancarias, con pérdidas económicas acumuladas "
+            f"de {total_perdidas:.2f} millones de dólares.\n\n"
+            f"El año con mayor cantidad de quiebras bancarias "
+            f"fue {anio_mas_quiebras}, mientras que el año "
+            f"con mayores pérdidas económicas fue "
+            f"{anio_mas_perdidas}.\n\n"
+            f"Estos resultados permiten observar la evolución "
+            f"de las quiebras bancarias y las pérdidas económicas "
+            f"a lo largo del período de estudio. "
+            f"Es importante considerar que las pérdidas "
+            f"económicas no dependen únicamente de la cantidad "
+            f"de instituciones que quebraron, sino también "
+            f"de su magnitud."
+        )
         else:
 
-            correlacion = resumen[
-                "cantidad_quiebras"
-            ].corr(resumen["perdidas_totales"])
+                    total_quiebras = resumen["cantidad_quiebras"].sum()
+        total_perdidas = resumen["perdidas_totales"].sum()
 
-            if pd.isna(correlacion):
-                relacion = "no se pudo determinar una correlación"
-            elif correlacion >= 0.7:
-                relacion = "una relación positiva fuerte"
-            elif correlacion >= 0.3:
-                relacion = "una relación positiva moderada"
-            elif correlacion > -0.3:
-                relacion = "una relación lineal débil"
-            elif correlacion > -0.7:
-                relacion = "una relación negativa moderada"
-            else:
-                relacion = "una relación negativa fuerte"
+        anio_mas_quiebras = resumen.loc[
+            resumen["cantidad_quiebras"].idxmax(), "FAILYR"
+        ]
 
-            return (
-                f"Durante el período completo de 1992 a 2026, "
-                f"la correlación de Pearson entre la cantidad anual "
-                f"de quiebras bancarias y las pérdidas económicas "
-                f"fue de {correlacion:.2f}.\n\n"
-                f"Este resultado indica {relacion} entre "
-                f"ambas variables.\n\n"
-                f"Es importante considerar que una correlación "
-                f"no implica causalidad y que las pérdidas económicas "
-                f"también pueden depender de la magnitud de las "
-                f"instituciones bancarias que quebraron."
-            )
+        anio_mas_perdidas = resumen.loc[
+            resumen["perdidas_totales"].idxmax(), "FAILYR"
+        ]
+
+        return (
+            f"Durante el período completo de 1992 a 2026 "
+            f"se registraron {total_quiebras:.0f} quiebras "
+            f"bancarias, con pérdidas económicas acumuladas "
+            f"de {total_perdidas:.2f} millones de dólares.\n\n"
+            f"El año con mayor cantidad de quiebras bancarias "
+            f"fue {anio_mas_quiebras}, mientras que el año "
+            f"con mayores pérdidas económicas fue "
+            f"{anio_mas_perdidas}.\n\n"
+            f"Estos resultados permiten observar la evolución "
+            f"de las quiebras bancarias y las pérdidas económicas "
+            f"a lo largo del período de estudio. "
+            f"Es importante considerar que las pérdidas "
+            f"económicas no dependen únicamente de la cantidad "
+            f"de instituciones que quebraron, sino también "
+            f"de su magnitud."
+        )
+            
     @render.ui
     def tabla_conclusiones():
         return conclusiones(entrada.resolucion_dispersion())
