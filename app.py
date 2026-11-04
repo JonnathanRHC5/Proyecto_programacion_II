@@ -296,7 +296,7 @@ ui.nav_panel(
             ),
         ),
         ui.nav_panel(
-    "Pregunta 2",f
+    "Pregunta 2",
 
     ui.h3(ui.strong("Evolución temporal de las quiebras bancarias")),
             
