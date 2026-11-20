@@ -495,7 +495,17 @@ def conclusiones_dispersion_geografia_tabla():
 # Interfaz de la aplicación
 interfaz_aplicacion = ui.page_fluid(
     ui.tags.style("""
-        body { background: #f7f8fa; color: #202735; }
+        body {
+            background-color: #e8eef5;
+            background-image: repeating-linear-gradient(
+                135deg,
+                transparent,
+                transparent 65px,
+                rgba(45, 75, 110, 0.035) 65px,
+                rgba(45, 75, 110, 0.035) 67px
+            );
+            color: #202735;
+        }
         .seccion-contenido { background: white; border: 1px solid #e2e6ec;
           border-radius: 10px; padding: 1.1rem 1.25rem; margin: 1rem 0; }
         .tabla-datos { width: 100%; border-collapse: collapse; }
@@ -662,6 +672,10 @@ interfaz_aplicacion = ui.page_fluid(
                     "Relación de las pérdidas registradas según el tamaño de los activos "
                     "y el tipo de resolución"
                 )),
+                ui.p(
+                    "¿Cómo se relacionan las pérdidas registradas de los cierres bancarios "
+                    "según el tamaño de los activos y el tipo de resolución?"
+                ),
                 # Gráficos de dispersión
                 ui.h4("Dispersión de los activos y pérdidas por tipo de resolución"),
                 ui.input_select(
